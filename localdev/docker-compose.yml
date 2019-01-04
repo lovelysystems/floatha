@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  floatha:
+    image: lovelysystems/floatha:dev
+    volumes:
+      # mount the local doctl config file to the container for local testing
+      # in a swarm you would probably create a secret for this
+      - $HOME/.config/doctl/config.yaml:/root/.config/doctl/config.yaml
+    environment:
+      FLOATING_HEALTH_URI: "http://1.1.1.1:8080/ping"
+      DROPLET_TAG: "traefik"
