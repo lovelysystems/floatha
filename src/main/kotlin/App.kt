@@ -2,9 +2,7 @@ import com.myjeeva.digitalocean.exception.DigitalOceanException
 import com.myjeeva.digitalocean.impl.DigitalOceanClient
 import com.myjeeva.digitalocean.pojo.Droplet
 import com.myjeeva.digitalocean.pojo.FloatingIP
-import com.natpryce.konfig.EnvironmentVariables
-import com.natpryce.konfig.getValue
-import com.natpryce.konfig.stringType
+import com.natpryce.konfig.*
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -15,11 +13,25 @@ import kotlin.concurrent.timer
 
 val FLOATING_HEALTH_URI by stringType
 val DROPLET_TAG by stringType
-fun main(args: Array<String>) {
-    val config = EnvironmentVariables()
+val RETRY_WAIT_TIME by longType
+val CHECK_WAIT_TIME by longType
+val NUM_RETRIES by intType
 
-    val checker = HAChecker(config[FLOATING_HEALTH_URI], config[DROPLET_TAG], readDOToken())
-    timer("Checker", period = 1000) { checker.trigger() }
+fun main(args: Array<String>) {
+    val config = EnvironmentVariables() overriding ConfigurationMap(
+        CHECK_WAIT_TIME to "1000",
+        RETRY_WAIT_TIME to "1000",
+        NUM_RETRIES to "5"
+    )
+
+    val checker = HAChecker(
+        config[FLOATING_HEALTH_URI],
+        config[DROPLET_TAG],
+        config[RETRY_WAIT_TIME],
+        config[NUM_RETRIES],
+        readDOToken()
+    )
+    timer("Checker", period = config[CHECK_WAIT_TIME]) { checker.trigger() }
 }
 
 fun readDOToken(): String {
@@ -35,6 +47,8 @@ fun readDOToken(): String {
 data class HAChecker(
     val floatingHealthURIString: String,
     val dropletTag: String,
+    val retryWaitTime: Long,
+    val numRetries: Int,
     val doToken: String,
     val usePrivate: Boolean = true
 ) {
@@ -118,9 +132,12 @@ data class HAChecker(
         return droplet
     }
 
-    private fun checkHealth(url: URL = currentHealthURL, retries: Int = 0): Boolean {
+    private fun checkHealth(url: URL = currentHealthURL, retries: Int = numRetries): Boolean {
         var tries = 0
         while (tries < retries + 1) {
+            if (tries > 0) {
+                Thread.sleep(retryWaitTime)
+            }
             tries++
             val conn = url.openConnection() as HttpURLConnection
             conn.connectTimeout = 1000
