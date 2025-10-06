@@ -8,7 +8,7 @@ plugins {
 
 lovely {
     gitProject()
-    dockerProject("lovelysystems/floatha")
+    dockerProject("ghcr.io/lovelysystems/floatha")
     dockerFiles.from(tasks["distTar"].outputs)
 }
 
