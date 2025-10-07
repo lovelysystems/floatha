@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   floatha:
-    image: lovelysystems/floatha:dev
+    image: ghcr.io/lovelysystems/floatha:dev
     volumes:
       # mount the local doctl config file to the container for local testing
       # in a swarm you would probably create a secret for this
